@@ -7,72 +7,89 @@ using namespace std;
 //общая идея: находим сумму Минковского первой и разности второй фигуры,
 //затем проверяем лежит ли (0, 0) в получившейся сумме
 
+enum location {
+    LEFT, RIGHT, BEYOND, BEHIND, BETWEEN, ORIGIN, DESTINATION
+};
+
 struct Point {
     Point(const double &_x, const double &_y) : x(_x), y(_y) {}
 
-    static double angle(const Point &a, const Point &b);
+    Point operator+(const Point &b) const {
+        Point dot(x + b.x, y + b.y);
+        return dot;
+    }
+
+    void invert() {
+        x = (-1)*x;
+        y = (-1)*y;
+    }
+
+    double length() {
+        return x * x + y * y;
+    }
+
+    static double angle(const Point &a, const Point &b) {
+        double alpha = acos((b.x - a.x) / sqrt(pow(b.x - a.x, 2) + pow(b.y - a.y, 2)));
+        if (b.y - a.y < 0) {
+            return 2 * M_PI - alpha;
+        }
+        return alpha;
+    }
 
     double x;
     double y;
 };
 
-//угол между векторами Oa и Ob
-static double Point::angle(const Point &a, const Point &b) {
-    double alpha = acos((b.x - a.x) / sqrt(pow(b.x - a.x, 2) + pow(b.y - a.y, 2)));
-    if (b.y - a.y < 0) {
-        return 2 * M_PI - alpha;
-    }
-    return alpha;
+double det_2(const Point &a, const Point &b) {
+    return a.x * b.y - b.x * a.y;
 }
 
 struct Segment {
     Segment(const Point &_A, const Point &_B);
+
     Point A;
     Point B;
 
     //Классификация положения точки (0,0)
-    //1 - слева от AB
-    //2 - справа от AB
-    //3 - позади от AB
-    //4 - впереди от AB
-    //5 - совпадает с точкой А
-    //6 - совпадает с точкой B
-    //7 - лежит на AB
-    int class_of_zero_location;
+    location class_of_zero_location;
 };
 
 Segment::Segment(const Point &_A, const Point &_B) : A(_A), B(_B) {
     Point a(B.x - A.x, B.y - A.y);
     Point b(0 - A.x, 0 - A.y);
-    double sa = a.x * b.y - b.x * a.y;
+    double sa = det_2(a, b);
     if (sa > 0) {
-        class_of_zero_location = 1;
+        class_of_zero_location = LEFT;
     }
     if (sa < 0) {
-        class_of_zero_location = 2;
+        class_of_zero_location = RIGHT;
     }
     if (a.x * b.x < 0 or a.y * b.y < 0) {
-        class_of_zero_location = 3;
+        class_of_zero_location = BEHIND;
     }
-    if (pow(a.x, 2) + pow(a.y, 2) < pow(b.x, 2) + pow(b.y, 2)) {
-        class_of_zero_location = 4;
+    if (a.length() < b.length()) {
+        class_of_zero_location = BEYOND;
     }
     if (A.x == 0 and A.y == 0) {
-        class_of_zero_location = 5;
+        class_of_zero_location = ORIGIN;
     }
     if (B.x == 0 and B.y == 0) {
-        class_of_zero_location = 6;
+        class_of_zero_location = DESTINATION;
     }
-    class_of_zero_location = 7;
+    class_of_zero_location = BETWEEN;
 }
 
 class Polygon {
 public:
     Polygon(vector<Point> &_polygon);
+
     static bool Intersect(const Polygon &A, const Polygon &B);
+
 private:
     vector<Point> dots;
+
     void Sort();
+
     int polygon_size;
 };
 
@@ -109,14 +126,14 @@ void Polygon::Sort() {
     dots = move(X);
 }
 
-static bool Polygon::Intersect(const Polygon &A, const Polygon &B) {
+bool Polygon::Intersect(const Polygon &A, const Polygon &B) {
     vector<Point> C;
 
     int i = 0;
     int j = 0;
 
     while (i < A.polygon_size or j < B.polygon_size) {
-        Point dot(A.dots[i].x + B.dots[j].x, A.dots[i].y + B.dots[j].y);
+        Point dot = A.dots[i] + B.dots[j];
         C.push_back(dot);
         if (Point::angle(A.dots[i], A.dots[i + 1]) < Point::angle(B.dots[j], B.dots[j + 1])) {
             if (i != A.polygon_size) {
@@ -145,15 +162,15 @@ static bool Polygon::Intersect(const Polygon &A, const Polygon &B) {
     } else {
         for (int z = 0; z < C.size(); z++) {
             Segment AB(C[z], C[(z + 1) % static_cast<int>(C.size())]);
-            int flag = AB.class_of_zero_location;
-            if (flag == 5 or flag == 6 or flag == 7) {
+            location flag = AB.class_of_zero_location;
+            if (flag == ORIGIN or flag == DESTINATION or flag == BETWEEN) {
                 result = true;
                 break;
             }
-            if (flag == 1) {
+            if (flag == LEFT) {
                 result = true;
             }
-            if (flag == 2) {
+            if (flag == RIGHT) {
                 result = false;
                 break;
             }
@@ -183,9 +200,8 @@ int main() {
     for (int i = 0; i < m; i++) {
         Point dot(0, 0);
         cin >> dot.x;
-        dot.x = dot.x * (-1);
         cin >> dot.y;
-        dot.y = dot.y * (-1);
+        dot.invert();
         B.push_back(dot);
     }
     Polygon::Intersect(A, B);
