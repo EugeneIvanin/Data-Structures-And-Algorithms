@@ -3,8 +3,6 @@
 #include <queue>
 #include <vector>
 
-using namespace std;
-
 double det_2(const double &a, const double &b, const double &c, const double &d) {
     return a * d - b * c;
 }
@@ -17,6 +15,11 @@ struct Point {
         y = _dot.y;
         z = _dot.z;
         num = _dot.num;
+    }
+
+    Point operator-(const Point& b) const {
+        Point dot(x-b.x, y-b.y, z-b.z, -1);
+        return dot;
     }
 
     double x;
@@ -42,25 +45,26 @@ struct Segment {
 };
 
 struct CVector {
-    CVector(const Point &a, const Point &b) {
-        x = b.x - a.x;
-        y = b.y - a.y;
-        z = b.z - a.z;
-        length = sqrt(x * x + y * y + z * z);
-    }
+    CVector(const Point &a, const Point &b) : x((b-a).x), y((b-a).y), z((b-a).z) {}
 
     CVector vectorProduct(const CVector &v1, const CVector &v2);
+    static double scalar(const CVector &v1, const CVector &v2) {
+        return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+    }
+    static double scalar(const Point &dot, const CVector &v2) {
+        return dot.x * v2.x + dot.y * v2.y + dot.z * v2.z;
+    }
 
     static double angle_between(const CVector &v1, const CVector &v2);
+    double length() const {return sqrt(x * x + y * y + z * z); };
 
     double x;
     double y;
     double z;
-    double length;
 };
 
 CVector CVector::vectorProduct(const CVector &v1, const CVector &v2) {
-    vector<double> vp(3);
+    std::vector<double> vp(3);
     vp[0] = det_2(v1.y, v1.z, v2.y, v2.z);
     vp[1] = det_2(v1.z, v1.x, v2.z, v2.x);
     vp[2] = det_2(v1.x, v1.y, v2.x, v2.y);
@@ -71,7 +75,7 @@ CVector CVector::vectorProduct(const CVector &v1, const CVector &v2) {
 }
 
 double CVector::angle_between(const CVector &v1, const CVector &v2) {
-    return acos((v1.x * v2.x + v1.y * v2.y + v1.z * v2.z) / (v1.length * v2.length));
+    return acos(scalar(v1, v2) / (v1.length() * v2.length()));
 }
 
 //грань
@@ -91,9 +95,10 @@ CVector Face::normal() {
     double l;
     double m;
     double n;
-    l = (B.y - A.y) * (C.z - A.z) - (B.z - A.z) * (C.y - A.y);
-    m = (-1) * ((B.x - A.x) * (C.z - A.z) - (B.z - A.z) * (C.x - A.x));
-    n = (B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x);
+
+    l = ((B - A).y) * ((C - A).z) - ((B - A).z) * ((C - A).y);
+    m = (-1) * (((B - A).x) * ((C - A).z) - ((B - A).z) * ((C - A).x));
+    n = ((B - A).x) * ((C - A).y) - ((B - A).y) * ((C - A).x);
     Point O(0, 0, 0, -1);
     Point N(l, m, n, -1);
     CVector norm(O, N);
@@ -103,8 +108,8 @@ CVector Face::normal() {
 class Wrapper_3D {
 public:
 
-    Wrapper_3D(const vector<Point> &_dots) {
-        dots = move(_dots);
+    Wrapper_3D(const std::vector<Point> &_dots) {
+        dots = std::move(_dots);
         dots_size = static_cast<int>(dots.size());
         contour.resize(dots_size);
         for (int i = 0; i < dots_size; i++) {
@@ -115,7 +120,7 @@ public:
     void wrapping_gift();
 
 private:
-    vector<Point> dots;
+    std::vector<Point> dots;
     int dots_size;
 
     //возвращает первую точку первой построенной грани
@@ -132,7 +137,7 @@ private:
     void sorting(Point &p, Point &q, Point &r);
 
     //в матрице храним информацию: принадлежит ли вектор построенному контуру
-    vector<vector<bool> > contour;
+    std::vector<std::vector<bool> > contour;
 };
 
 
@@ -144,21 +149,21 @@ void Wrapper_3D::wrapping_gift() {
     sorting(p, q, r);
 
     //очередь граней для построения
-    queue<Face> Q;
+    std::queue<Face> Q;
     Face Start_Face(p, q, r);
     contour[Start_Face.A.num][Start_Face.B.num] = true;
     contour[Start_Face.B.num][Start_Face.C.num] = true;
     contour[Start_Face.C.num][Start_Face.A.num] = true;
     Q.push(Start_Face);
 
-    vector<Face> answer;
+    std::vector<Face> answer;
     answer.push_back(Start_Face);
     while (!Q.empty()) {
         Face current_Face = Q.front();
         Q.pop();
 
         //инициализируем ребра текущей грани
-        vector<Segment> edges_of_face;
+        std::vector<Segment> edges_of_face;
         Segment s1(current_Face.A.num, current_Face.B.num);
         Segment s2(current_Face.B.num, current_Face.C.num);
         Segment s3(current_Face.C.num, current_Face.A.num);
@@ -185,21 +190,16 @@ void Wrapper_3D::wrapping_gift() {
                 Segment t1(new_face.A.num, new_face.B.num);
                 Segment t2(new_face.B.num, new_face.C.num);
                 Segment t3(new_face.C.num, new_face.A.num);
-                vector<Segment> edges_of_new_face;
+                std::vector<Segment> edges_of_new_face;
                 edges_of_new_face.push_back(t1);
                 edges_of_new_face.push_back(t2);
                 edges_of_new_face.push_back(t3);
                 for (auto edge : edges_of_new_face) {
                     bool inContour = contour[edge.b][edge.a];
-                    switch (inContour) {
-                        case true: {
-                            contour[edge.b][edge.a] = false;
-                            break;
-                        }
-                        case false: {
-                            contour[edge.a][edge.b] = true;
-                            break;
-                        }
+                    if(inContour) {
+                        contour[edge.b][edge.a] = false;
+                    } else {
+                        contour[edge.a][edge.b] = true;
                     }
                 }
                 answer.push_back(new_face);
@@ -210,11 +210,13 @@ void Wrapper_3D::wrapping_gift() {
 
     //Лексикографическая сортировка + вывод
     int count = answer.size();
-    cout << count << endl;
-    vector<bool> color(count, true);
+    std::cout << count << std::endl;;
     double minimal = 1000;
     int min_index = 0;
+
+    //Сортировка точек внутри каждой грани
     for (int i = 0; i < count; i++) {
+        minimal = 1000;
         if (answer[i].A.num < minimal) {
             minimal = answer[i].A.num;
             min_index = 0;
@@ -224,35 +226,25 @@ void Wrapper_3D::wrapping_gift() {
             min_index = 1;
         }
         if (answer[i].C.num < minimal) {
-            minimal = answer[i].C.num;
             min_index = 2;
         }
         switch (min_index) {
             case 0: {
-                minimal = 1000;
                 break;
             }
             case 1: {
-                minimal = 1000;
-                double a;
-                double b;
-                double c;
-                a = answer[i].B.num;
-                b = answer[i].C.num;
-                c = answer[i].A.num;
+                double a = answer[i].B.num;
+                double b = answer[i].C.num;
+                double c = answer[i].A.num;
                 answer[i].A.num = a;
                 answer[i].B.num = b;
                 answer[i].C.num = c;
                 break;
             }
             case 2: {
-                minimal = 1000;
-                double a;
-                double b;
-                double c;
-                a = answer[i].C.num;
-                b = answer[i].A.num;
-                c = answer[i].B.num;
+                double a = answer[i].C.num;
+                double b = answer[i].A.num;
+                double c = answer[i].B.num;
                 answer[i].A.num = a;
                 answer[i].B.num = b;
                 answer[i].C.num = c;
@@ -261,9 +253,11 @@ void Wrapper_3D::wrapping_gift() {
         }
     }
 
+    //лексикографическая сортировка
+    std::vector<bool> color(count, true);
     int min_i = 0;
     for (int j = 0; j < count; j++) {
-        vector<double> minim(3, 100000);
+        std::vector<double> minim(3, 100000);
         for (int i = 0; i < answer.size(); i++) {
             if (answer[i].A.num < minim[0] and color[i] == true) {
                 minim[0] = answer[i].A.num;
@@ -283,10 +277,10 @@ void Wrapper_3D::wrapping_gift() {
                 min_i = i;
             }
         }
-        cout << 3 << " ";
-        cout << answer[min_i].A.num << " ";
-        cout << answer[min_i].B.num << " ";
-        cout << answer[min_i].C.num << endl;
+        std::cout << 3 << " ";
+        std::cout << answer[min_i].A.num << " ";
+        std::cout << answer[min_i].B.num << " ";
+        std::cout << answer[min_i].C.num << std::endl;
         color[min_i] = false;
     }
 }
@@ -294,7 +288,7 @@ void Wrapper_3D::wrapping_gift() {
 //ищем самую нижнюю точку по Oz, при этом самую дальнюю по Ox и самую левую по Oy
 Point Wrapper_3D::first_point() {
     int min_z = dots[0].z;
-    vector<Point> min_z_points;
+    std::vector<Point> min_z_points;
     for (int i = 0; i < dots_size; i++) {
         if (dots[i].z <= min_z) {
             min_z = dots[i].z;
@@ -306,7 +300,7 @@ Point Wrapper_3D::first_point() {
         }
     }
     int min_x = 100000;
-    vector<Point> min_x_points;
+    std::vector<Point> min_x_points;
     for (int i = 0; i < min_z_points.size(); i++) {
         if (min_z_points[i].x <= min_x) {
             min_x = min_z_points[i].x;
@@ -323,10 +317,7 @@ Point Wrapper_3D::first_point() {
     for (int i = 0; i < min_x_points.size(); i++) {
         if (min_x_points[i].y <= min_y) {
             min_y = min_x_points[i].y;
-            answ.x = min_x_points[i].x;
-            answ.y = min_x_points[i].y;
-            answ.z = min_x_points[i].z;
-            answ.num = min_x_points[i].num;
+            answ = min_x_points[i];
         }
     }
     return answ;
@@ -360,8 +351,8 @@ Point Wrapper_3D::third_point(const Point &p, const Point &q) {
             Face F(p, q, r);
             for (auto i : dots) {
                 if (!(i.num == p.num) and !(i.num == q.num) and !(i.num == r.num)) {
-                    double D = (-1) * (F.A.x * F.normal().x + F.A.y * F.normal().y + F.A.z * F.normal().z);
-                    if (F.normal().x * i.x + F.normal().y * i.y + F.normal().z * i.z + D > 0) {
+                    double D = (-1) * (CVector::scalar(F.A, F.normal()));
+                    if (CVector::scalar(i, F.normal()) + D > 0) {
                         sign_plus = true;
                     } else if (F.normal().x * i.x + F.normal().y * i.y + F.normal().z * i.z + D < 0) {
                         sign_minus = true;
@@ -402,7 +393,7 @@ void Wrapper_3D::sorting(Point &p, Point &q, Point &r) {
         }
         case false: {
             if (sign_plus == true) {
-                swap(q, r);
+                std::swap(q, r);
             }
             break;
         }
@@ -412,18 +403,18 @@ void Wrapper_3D::sorting(Point &p, Point &q, Point &r) {
 
 int main() {
     int m;
-    cin >> m; //количество тестов
+    std::cin >> m; //количество тестов
     for (int i = 0; i < m; i++) {
         int n; //число точек
-        cin >> n;
-        vector<Point> dots;
+        std::cin >> n;
+        std::vector<Point> dots;
         for (int j = 0; j < n; j++) {
             int x = 0;
             int y = 0;
             int z = 0;
-            cin >> x;
-            cin >> y;
-            cin >> z;
+            std::cin >> x;
+            std::cin >> y;
+            std::cin >> z;
             Point _dot(x, y, z, j);
             dots.push_back(_dot);
         }
