@@ -2,8 +2,6 @@
 #include <math.h>
 #include <vector>
 
-using namespace std;
-
 //общая идея: находим сумму Минковского первой и разности второй фигуры,
 //затем проверяем лежит ли (0, 0) в получившейся сумме
 
@@ -81,19 +79,19 @@ Segment::Segment(const Point &_A, const Point &_B) : A(_A), B(_B) {
 
 class Polygon {
 public:
-    Polygon(vector<Point> &_polygon);
+    Polygon(std::vector<Point> &_polygon);
 
     static bool Intersect(const Polygon &A, const Polygon &B);
 
 private:
-    vector<Point> dots;
+    std::vector<Point> dots;
 
     void Sort();
 
     int polygon_size;
 };
 
-Polygon::Polygon(vector<Point> &_polygon) {
+Polygon::Polygon(std::vector<Point> &_polygon) {
     dots = move(_polygon);
     Sort();
     polygon_size = static_cast<int>(dots.size());
@@ -116,7 +114,7 @@ void Polygon::Sort() {
             }
         }
     }
-    vector<Point> X;
+    std::vector<Point> X;
     for (int i = min_pos; i >= 0; i--) {
         X.push_back(dots[i]);
     }
@@ -127,7 +125,7 @@ void Polygon::Sort() {
 }
 
 bool Polygon::Intersect(const Polygon &A, const Polygon &B) {
-    vector<Point> C;
+    std::vector<Point> C;
 
     int i = 0;
     int j = 0;
@@ -177,30 +175,30 @@ bool Polygon::Intersect(const Polygon &A, const Polygon &B) {
         }
     }
     if (result) {
-        cout << "YES";
+        std::cout << "YES";
     } else {
-        cout << "NO";
+        std::cout << "NO";
     }
     return false;
 }
 
 int main() {
     int n;
-    cin >> n;
-    vector<Point> A;
+    std::cin >> n;
+    std::vector<Point> A;
     for (int i = 0; i < n; i++) {
         Point dot(0, 0);
-        cin >> dot.x;
-        cin >> dot.y;
+        std::cin >> dot.x;
+        std::cin >> dot.y;
         A.push_back(dot);
     }
     int m;
-    cin >> m;
-    vector<Point> B;
+    std::cin >> m;
+    std::vector<Point> B;
     for (int i = 0; i < m; i++) {
         Point dot(0, 0);
-        cin >> dot.x;
-        cin >> dot.y;
+        std::cin >> dot.x;
+        std::cin >> dot.y;
         dot.invert();
         B.push_back(dot);
     }
